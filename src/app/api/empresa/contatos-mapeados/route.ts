@@ -90,17 +90,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Inserir novo contato
-    const { data, error } = await supabase
-      .from('empresa_contatos_mapeamento')
+    const { data, error } = await (supabase
+      .from('empresa_contatos_mapeamento' as any)
       .insert({
         empresa_id,
         telefone_contato: telefoneLimpo,
         nome_contato,
         tipo_contato: tipo_contato || 'cliente',
         ativo: true,
-      })
+      } as any)
       .select()
-      .single();
+      .single() as any);
 
     if (error) {
       console.error('Erro ao inserir:', error);
