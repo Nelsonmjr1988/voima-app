@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+// 📊 Armazenar últimas requisições para debug
+let webhookLogs: Array<{ timestamp: string; event: string; data: any; status: string }> = [];
+
+const addLog = (event: string, data: any, status: string) => {
+  webhookLogs.push({
+    timestamp: new Date().toISOString(),
+    event,
+    data,
+    status,
+  });
+  // Manter apenas últimas 50
+  if (webhookLogs.length > 50) webhookLogs.shift();
+};
+
 /**
  * POST /api/webhooks/z-api
  * 
@@ -15,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { event, data } = body;
 
-    console.log('🔔 Webhook Z-API recebido:', event);
+    console.log('🔔 Webhook Z-API recebido:', event, JSON.stringify(data));
 
     // ========================================
     // EVENTO: Nova mensagem recebida
@@ -28,11 +42,13 @@ export async function POST(request: NextRequest) {
       // 🔑 IMPORTANTE: De qual número (empresa) chegou a mensagem?
       const numeroEmpresa = data.from;
 
-      console.log(`📨 Mensagem de ${telefoneCliente} para Voima: "${mensagem}"`);
+      console.log(`📨 Mensagem recebida: from=${telefoneCliente}, numeroEmpresa=${numeroEmpresa}, msg="${mensagem}"`);
+      addLog('MESSAGES_UPSERT', { from: telefoneCliente, numeroEmpresa, mensagem }, 'RECEBIDA');
 
       // ========================================
       // ETAPA 1: Identificar empresa pelo número dela (5564996760460 = Silva, etc)
       // ========================================
+      console.log(`🔍 Procurando empresa com numero_whatsapp_zapi = ${numeroEmpresa}`);
       const empresaResult = await (supabase as any)
         .from('empresas')
         .select('id, razao_social, nome_fantasia')
@@ -231,6 +247,20 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   }
+}
+
+/**
+ * GET /api/webhooks/z-api/logs
+ * Retorna logs de debug das últimas requisições recebidas
+ */
+export async function GET() {
+  return NextResponse.json(
+    {
+      total_logs: webhookLogs.length,
+      logs: webhookLogs,
+    },
+    { status: 200 }
+  );
 }
 
 /**
