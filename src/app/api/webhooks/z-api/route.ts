@@ -18,233 +18,168 @@ const addLog = (event: string, data: any, status: string) => {
 /**
  * POST /api/webhooks/z-api
  * 
- * Webhook SIMPLIFICADO:
- * 1. Recebe mensagem WhatsApp
- * 2. Identifica qual empresa pelo número_whatsapp_zapi
- * 3. Passa empresa_id pro agent
- * 4. Salva no histórico
+ * Webhook para Z-API
+ * 
+ * **ESTRUTURA Z-API (CORRETO):**
+ * {
+ *   "instanceId": "3EAADDCE71F5D2C80DAAB2694663CF7D",
+ *   "phone": "5564996760460",           // ← QUEM ENVIOU (Silva Engenharia)
+ *   "connectedPhone": "5564996750376",  // ← NÚMERO CONECTADO (Voima)
+ *   "text": { "message": "Oi" },
+ *   "senderName": "Silva",
+ *   "type": "ReceivedCallback"
+ * }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // 📊 LOG TUDO QUE CHEGA
-    console.log('🔔 [WEBHOOK RAW] Requisição recebida:', JSON.stringify(body, null, 2));
-    addLog('RAW_REQUEST', body, 'RECEBIDA');
-
-    const { event, data } = body;
-
-    console.log('🔔 Webhook Z-API recebido:', event, JSON.stringify(data));
+    // 📊 LOG TUDO
+    console.log('🔔 [WEBHOOK Z-API] Payload recebido:', JSON.stringify(body, null, 2));
+    addLog('WEBHOOK_RECEIVED', body, 'RECEBIDA');
 
     // ========================================
-    // EVENTO: Nova mensagem recebida
+    // É uma mensagem de texto recebida?
     // ========================================
-    if (event === 'MESSAGES_UPSERT' || event === 'message' || event === 'MESSAGE') {
-      const telefoneCliente = data.from || data.sender;
-      const mensagem = data.message || '';
-      const nomeCliente = data.senderName || telefoneCliente;
-      
-      // 🔑 IMPORTANTE: De qual número (empresa) chegou a mensagem?
-      const numeroEmpresa = data.from;
+    if (body.type !== 'ReceivedCallback') {
+      console.log('⚠️ Não é ReceivedCallback, ignorando');
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
 
-      console.log(`📨 Mensagem recebida: from=${telefoneCliente}, numeroEmpresa=${numeroEmpresa}, msg="${mensagem}"`);
-      addLog('MESSAGES_UPSERT', { from: telefoneCliente, numeroEmpresa, mensagem }, 'RECEBIDA');
+    // Ignorar mensagens sem texto
+    if (!body.text?.message && !body.image && !body.audio && !body.video && !body.document) {
+      console.log('⚠️ Mensagem sem conteúdo, ignorando');
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
 
-      // ========================================
-      // ETAPA 1: Identificar empresa pelo número dela (5564996760460 = Silva, etc)
-      // ========================================
-      console.log(`🔍 Procurando empresa com numero_whatsapp_zapi = ${numeroEmpresa}`);
-      const empresaResult = await (supabase as any)
-        .from('empresas')
-        .select('id, razao_social, nome_fantasia')
-        .eq('numero_whatsapp_zapi', numeroEmpresa)
-        .single();
+    // ========================================
+    // Extrair dados
+    // ========================================
+    const telefoneCliente = body.phone;    // Quem enviou (Silva)
+    const numeroZapi = body.connectedPhone; // Número conectado (Voima)
+    let mensagem = '';
 
-      const empresa = (empresaResult?.data || null) as any;
-      const empresaError = empresaResult?.error;
+    if (body.text?.message) {
+      mensagem = body.text.message;
+    } else if (body.image?.caption) {
+      mensagem = `[Imagem] ${body.image.caption || ''}`;
+    } else if (body.audio) {
+      mensagem = '[Áudio]';
+    } else if (body.video?.caption) {
+      mensagem = `[Vídeo] ${body.video.caption || ''}`;
+    } else if (body.document?.fileName) {
+      mensagem = `[Documento] ${body.document.fileName}`;
+    }
 
-      if (empresaError || !empresa) {
-        console.warn(`⚠️ Nenhuma empresa encontrada para número: ${numeroEmpresa}`);
+    const nomeCliente = body.senderName || telefoneCliente;
 
-        return NextResponse.json(
-          { 
-            success: true, 
-            warning: 'Empresa não identificada',
-            numero_recebido: numeroEmpresa,
-            dica: 'Configure o número no campo numero_whatsapp_zapi da tabela empresas'
-          },
-          { status: 200 }
-        );
-      }
+    console.log(`📨 Mensagem: de ${telefoneCliente} (Silva) → Voima: "${mensagem}"`);
+    addLog('MENSAGEM_PROCESSADA', { telefoneCliente, numeroZapi, mensagem }, 'PROCESSANDO');
 
-      // ========================================
-      // ETAPA 2: Empresa identificada! ✅
-      // ========================================
-      console.log(
-        `✅ Empresa identificada: ${empresa.razao_social} (${empresa.id})`
-      );
+    // ========================================
+    // ETAPA 1: Identificar empresa pelo número que enviou
+    // ========================================
+    console.log(`🔍 Procurando empresa com numero_whatsapp_zapi = ${telefoneCliente}`);
+    const empresaResult = await (supabase as any)
+      .from('empresas')
+      .select('id, razao_social, nome_fantasia')
+      .eq('numero_whatsapp_zapi', telefoneCliente)
+      .single();
 
-      // ========================================
-      // ETAPA 3: Salvar mensagem no histórico
-      // ========================================
-      const { error: saveError } = await (supabase as any)
-        .from('whatsapp_mensagens')
-        .insert({
-          empresa_id: empresa.id,
-          telefone_cliente: telefoneCliente,
-          mensagem: mensagem,
-          tipo: 'entrada',
-          timestamp: new Date(),
-          metadata: {
-            nome_cliente: nomeCliente,
-            numero_empresa: numeroEmpresa,
-          },
-        });
+    const empresa = (empresaResult?.data || null) as any;
+    const empresaError = empresaResult?.error;
 
-      if (saveError) {
-        console.error('❌ Erro ao salvar mensagem:', saveError);
-      } else {
-        console.log(`💾 Mensagem salva no histórico (empresa: ${empresa.id})`);
-      }
-
-      // ========================================
-      // ETAPA 4: Chamar agent para processar 🤖
-      // ========================================
-      console.log(`🤖 Chamando agent para processar...`);
-
-      try {
-        const agentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agent/respond`;
-        
-        const agentResponse = await fetch(agentUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            empresa_id: empresa.id,
-            telefone_cliente: telefoneCliente,
-            mensagem: mensagem,
-          }),
-        });
-
-        const agentResult = await agentResponse.json();
-
-        if (agentResult.success && agentResult.resposta) {
-          console.log(`✅ Agent gerou resposta: ${agentResult.resposta}`);
-
-          // ========================================
-          // ETAPA 5: Enviar resposta de volta via Z-API
-          // ========================================
-          console.log(`📤 Enviando resposta via Z-API...`);
-
-          try {
-            const zapiUrl = 'https://api.z-api.io/instances/' +
-              process.env.Z_API_INSTANCE_ID +
-              '/token/' +
-              process.env.Z_API_TOKEN +
-              '/send-text';
-
-            const zapiResponse = await fetch(zapiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                phone: telefoneCliente,
-                message: agentResult.resposta,
-              }),
-            });
-
-            const zapiResult = await zapiResponse.json();
-
-            if (zapiResponse.ok) {
-              console.log(`✅ Resposta enviada com sucesso!`);
-            } else {
-              console.error(`⚠️ Erro ao enviar via Z-API:`, zapiResult);
-            }
-          } catch (zapiErr) {
-            console.error(`❌ Erro Z-API:`, zapiErr);
-          }
-        } else {
-          console.error(`⚠️ Agent não gerou resposta`, agentResult);
-        }
-      } catch (agentErr) {
-        console.error(`❌ Erro ao chamar agent:`, agentErr);
-      }
+    if (empresaError || !empresa) {
+      console.warn(`⚠️ Nenhuma empresa encontrada para número: ${telefoneCliente}`);
+      addLog('EMPRESA_NAO_IDENTIFICADA', { telefoneCliente }, 'ERRO');
 
       return NextResponse.json(
-        {
-          success: true,
-          empresa_id: empresa.id,
-          empresa_nome: empresa.razao_social,
-          mensagem_recebida: true,
-          processada_pelo_agent: true,
+        { 
+          success: true, 
+          warning: 'Empresa não identificada',
+          numero_recebido: telefoneCliente,
+          dica: 'Configure o número no campo numero_whatsapp_zapi da tabela empresas'
         },
         { status: 200 }
       );
     }
 
     // ========================================
-    // EVENTO: Status de entrega/leitura
+    // ETAPA 2: Empresa identificada! ✅
     // ========================================
-    if (event === 'MESSAGES_UPDATE' || event === 'message_status') {
-      const status = data.status || 'unknown';
-      const messageId = data.id;
-
-      console.log(`📌 Status de mensagem ${messageId}: ${status}`);
-
-      return NextResponse.json(
-        { success: true, status_updated: true },
-        { status: 200 }
-      );
-    }
+    console.log(`✅ Empresa identificada: ${empresa.razao_social} (${empresa.id})`);
 
     // ========================================
-    // EVENTO: Instância conectada
+    // ETAPA 3: Salvar mensagem no histórico
     // ========================================
-    if (event === 'INSTANCE_CONNECTED' || event === 'connected') {
-      const numeroWhatsapp = data.phone || data.number;
-
-      console.log(`🟢 WhatsApp conectado: ${numeroWhatsapp}`);
-
-      // Salvar status
-      await (supabase as any).from('zapi_instance_status').upsert({
-        instance_id: process.env.Z_API_INSTANCE_ID,
-        status: 'connected',
-        numero_whatsapp: numeroWhatsapp,
-        last_update: new Date(),
-        updated_at: new Date(),
+    const { error: saveError } = await (supabase as any)
+      .from('whatsapp_mensagens')
+      .insert({
+        empresa_id: empresa.id,
+        telefone_cliente: telefoneCliente,
+        mensagem: mensagem,
+        tipo: 'entrada',
+        timestamp: new Date(),
+        metadata: {
+          nome_cliente: nomeCliente,
+          numero_zapi: numeroZapi,
+          message_id: body.messageId,
+        },
       });
 
-      return NextResponse.json(
-        { success: true, connected: true },
-        { status: 200 }
-      );
+    if (saveError) {
+      console.error('❌ Erro ao salvar mensagem:', saveError);
+      addLog('ERRO_SALVAR', saveError, 'ERRO');
+    } else {
+      console.log(`💾 Mensagem salva no histórico (empresa: ${empresa.id})`);
+      addLog('MENSAGEM_SALVA', { empresa_id: empresa.id }, 'SUCESSO');
     }
 
     // ========================================
-    // EVENTO: Instância desconectada
+    // ETAPA 4: Chamar agent para processar 🤖
     // ========================================
-    if (event === 'INSTANCE_DISCONNECTED' || event === 'disconnected') {
-      console.log('🔴 WhatsApp desconectado');
+    console.log(`🤖 Chamando agent para processar...`);
 
-      await (supabase as any).from('zapi_instance_status').upsert({
-        instance_id: process.env.Z_API_INSTANCE_ID,
-        status: 'disconnected',
-        last_update: new Date(),
-        updated_at: new Date(),
+    try {
+      const agentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agent/respond`;
+      
+      const agentResponse = await fetch(agentUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empresa_id: empresa.id,
+          telefone_cliente: telefoneCliente,
+          mensagem: mensagem,
+        }),
       });
 
-      return NextResponse.json(
-        { success: true, disconnected: true },
-        { status: 200 }
-      );
+      const agentResult = await agentResponse.json();
+
+      if (agentResult?.success) {
+        console.log(`✅ Agent processou com sucesso`);
+        addLog('AGENT_SUCESSO', agentResult, 'SUCESSO');
+      } else {
+        console.error(`⚠️ Agent não gerou resposta`, agentResult);
+        addLog('AGENT_ERRO', agentResult, 'ERRO');
+      }
+    } catch (agentErr) {
+      console.error(`❌ Erro ao chamar agent:`, agentErr);
+      addLog('AGENT_EXCEPTION', agentErr, 'ERRO');
     }
 
-    // Evento desconhecido - log e retorna 200
-    console.log('⚠️ Evento desconhecido:', event, data);
     return NextResponse.json(
-      { success: true, event_logged: true },
+      {
+        success: true,
+        empresa_id: empresa.id,
+        empresa_nome: empresa.razao_social,
+        mensagem_recebida: true,
+      },
       { status: 200 }
     );
+
   } catch (error) {
     console.error('❌ Erro no webhook:', error);
+    addLog('WEBHOOK_ERRO', error, 'ERRO');
 
     // Sempre retornar 200 para Z-API saber que recebemos
     return NextResponse.json(
@@ -255,8 +190,8 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/webhooks/z-api/logs
- * Retorna logs de debug das últimas requisições recebidas
+ * GET /api/webhooks/z-api
+ * Retorna status e logs do webhook
  */
 export async function GET() {
   return NextResponse.json(
@@ -271,7 +206,7 @@ export async function GET() {
 }
 
 /**
- * Capturar qualquer outro método HTTP (OPTIONS, HEAD, PATCH, DELETE, etc)
+ * Capturar outros métodos HTTP para debug
  */
 export async function PATCH(request: NextRequest) {
   console.log('⚠️ [WEBHOOK] PATCH recebido');
