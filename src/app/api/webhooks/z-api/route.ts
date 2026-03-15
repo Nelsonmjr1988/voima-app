@@ -21,35 +21,35 @@ export async function POST(request: NextRequest) {
     // EVENTO: Nova mensagem recebida
     // ========================================
     if (event === 'MESSAGES_UPSERT' || event === 'message' || event === 'MESSAGE') {
-      const telefoneCliente = data.phone || data.sender;
+      const telefoneCliente = data.from || data.sender;
       const mensagem = data.message || '';
       const nomeCliente = data.senderName || telefoneCliente;
       
-      // 🔑 IMPORTANTE: Qual número Z-API recebeu essa mensagem?
-      const numeroZapi = data.to || data.destination;
+      // 🔑 IMPORTANTE: De qual número (empresa) chegou a mensagem?
+      const numeroEmpresa = data.from;
 
-      console.log(`📨 Mensagem de ${telefoneCliente} para ${numeroZapi}: "${mensagem}"`);
+      console.log(`📨 Mensagem de ${telefoneCliente} para Voima: "${mensagem}"`);
 
       // ========================================
-      // ETAPA 1: Identificar empresa pelo número Z-API
+      // ETAPA 1: Identificar empresa pelo número dela (5564996760460 = Silva, etc)
       // ========================================
       const empresaResult = await (supabase as any)
         .from('empresas')
         .select('id, razao_social, nome_fantasia')
-        .eq('numero_whatsapp_zapi', numeroZapi)
+        .eq('numero_whatsapp_zapi', numeroEmpresa)
         .single();
 
       const empresa = (empresaResult?.data || null) as any;
       const empresaError = empresaResult?.error;
 
       if (empresaError || !empresa) {
-        console.warn(`⚠️ Nenhuma empresa encontrada para número: ${numeroZapi}`);
+        console.warn(`⚠️ Nenhuma empresa encontrada para número: ${numeroEmpresa}`);
 
         return NextResponse.json(
           { 
             success: true, 
             warning: 'Empresa não identificada',
-            numero_recebido: numeroZapi,
+            numero_recebido: numeroEmpresa,
             dica: 'Configure o número no campo numero_whatsapp_zapi da tabela empresas'
           },
           { status: 200 }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
           timestamp: new Date(),
           metadata: {
             nome_cliente: nomeCliente,
-            numero_zapi: numeroZapi,
+            numero_empresa: numeroEmpresa,
           },
         });
 
