@@ -256,20 +256,11 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json(
     {
+      status: 'webhook_ativo',
+      timestamp: new Date(),
       total_logs: webhookLogs.length,
       logs: webhookLogs,
     },
     { status: 200 }
   );
-}
-
-/**
- * GET /api/webhooks/z-api
- * Retorna status do webhook
- */
-export async function GET() {
-  return NextResponse.json({
-    status: 'webhook_ativo',
-    timestamp: new Date(),
-  });
 }
