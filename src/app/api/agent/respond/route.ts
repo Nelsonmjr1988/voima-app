@@ -17,11 +17,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`🤖 Agent processando para empresa:`, empresa_id);
 
-    const { data: empresaData } = await (supabase
+    const { data: empresaRaw } = await (supabase
       .from('empresas')
       .select('razao_social, nome_fantasia, cnpj, email, telefone')
       .eq('id', empresa_id)
       .single() as any);
+
+    const empresaData = empresaRaw as any;
 
     if (!empresaData) {
       return NextResponse.json(
@@ -30,13 +32,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: historico } = await (supabase
+    const { data: historicoRaw } = await (supabase
       .from('whatsapp_mensagens')
       .select('mensagem, tipo, timestamp')
       .eq('empresa_id', empresa_id)
       .eq('telefone_cliente', telefone_cliente)
       .order('timestamp', { ascending: false })
       .limit(10) as any);
+
+    const historico = historicoRaw as any;
 
     const conversaAnterior = historico
       ?.reverse()

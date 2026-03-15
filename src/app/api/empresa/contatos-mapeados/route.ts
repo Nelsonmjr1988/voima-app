@@ -150,16 +150,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase
       .from('empresa_contatos_mapeamento')
-      .update({
-        nome_contato,
-        tipo_contato,
-        ativo,
-      })
+      .update({ nome_contato, tipo_contato, ativo } as any)
       .eq('id', id)
       .select()
-      .single();
+      .single() as any);
 
     if (error) {
       console.error('Erro ao atualizar:', error);
