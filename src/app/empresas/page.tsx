@@ -33,7 +33,7 @@ export default function EmpresasPage() {
     if (!form.razao_social || !form.cnpj) return alert('Razão Social e CNPJ são obrigatórios');
     setSaving(true);
 
-    const { error } = await supabase.from('empresas').insert({
+    const empresaData = {
       razao_social: form.razao_social,
       nome_fantasia: form.nome_fantasia || null,
       cnpj: form.cnpj,
@@ -43,7 +43,9 @@ export default function EmpresasPage() {
       email: form.email || null,
       plano: form.plano,
       status: 'onboarding',
-    });
+    } as any;
+
+    const { error } = await (supabase as any).from('empresas').insert(empresaData);
 
     if (error) {
       alert('Erro ao salvar: ' + error.message);

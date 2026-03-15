@@ -17,30 +17,30 @@ export async function POST(request: NextRequest) {
 
     console.log(`🤖 Agent processando para empresa:`, empresa_id);
 
-    const { data: empresaRaw } = await (supabase
+    const empresaRaw = await (supabase as any)
       .from('empresas')
       .select('razao_social, nome_fantasia, cnpj, email, telefone')
       .eq('id', empresa_id)
-      .single() as any);
+      .single();
 
-    const empresaData = empresaRaw as any;
+    const empresaData = (empresaRaw?.data || {}) as any;
 
-    if (!empresaData) {
+    if (!empresaData || !empresaData.razao_social) {
       return NextResponse.json(
         { error: 'Empresa não encontrada' },
         { status: 404 }
       );
     }
 
-    const { data: historicoRaw } = await (supabase
+    const historicoRaw = await (supabase as any)
       .from('whatsapp_mensagens')
       .select('mensagem, tipo, timestamp')
       .eq('empresa_id', empresa_id)
       .eq('telefone_cliente', telefone_cliente)
       .order('timestamp', { ascending: false })
-      .limit(10) as any);
+      .limit(10);
 
-    const historico = historicoRaw as any;
+    const historico = (historicoRaw?.data || []) as any[];
 
     const conversaAnterior = historico
       ?.reverse()
@@ -50,9 +50,13 @@ export async function POST(request: NextRequest) {
       )
       .join('\n');
 
-    const systemPrompt = `Você é assistente de atendimento para ${empresaData.razao_social}.
-${empresaData.nome_fantasia ? `Nome fantasia: ${empresaData.nome_fantasia}` : ''}
-CNPJ: ${empresaData.cnpj || 'N/A'}
+    const nomeEmpresa = String(empresaData.razao_social || 'sua empresa');
+    const fantasia = String(empresaData.nome_fantasia || '');
+    const cnpj = String(empresaData.cnpj || 'N/A');
+
+    const systemPrompt = `Você é assistente de atendimento para ${nomeEmpresa}.
+${fantasia ? `Nome fantasia: ${fantasia}` : ''}
+CNPJ: ${cnpj}
 
 Responda com profissionalismo, brevidade (2-3 linhas), em Português do Brasil.`;
 

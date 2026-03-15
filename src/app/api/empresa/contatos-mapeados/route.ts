@@ -76,11 +76,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se empresa existe
-    const { data: empresa, error: empresaError } = await supabase
+    const empresaResult = await (supabase as any)
       .from('empresas')
       .select('id')
       .eq('id', empresa_id)
       .single();
+
+    const empresa = (empresaResult?.data || null) as any;
+    const empresaError = empresaResult?.error;
 
     if (empresaError || !empresa) {
       return NextResponse.json(
@@ -150,12 +153,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { data, error } = await (supabase
+    const updateObj = { nome_contato, tipo_contato, ativo } as any;
+    const { data, error } = await ((supabase as any)
       .from('empresa_contatos_mapeamento')
-      .update({ nome_contato, tipo_contato, ativo } as any)
+      .update(updateObj)
       .eq('id', id)
       .select()
-      .single() as any);
+      .single()) as any;
 
     if (error) {
       console.error('Erro ao atualizar:', error);
@@ -197,7 +201,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Soft delete - apenas desativa
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('empresa_contatos_mapeamento')
       .update({ ativo: false })
       .eq('id', id)

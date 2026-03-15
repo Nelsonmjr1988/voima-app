@@ -21,11 +21,14 @@ export async function POST(request: NextRequest) {
     console.log(`📦 Preparando envio de OC ${oc_id} para ${telefone}`);
 
     // Buscar dados da OC no banco
-    const { data: oc, error: ocError } = await supabase
+    const ocResult = await (supabase as any)
       .from('ordens')
       .select('*')
       .eq('id', oc_id)
       .single();
+
+    const oc = (ocResult?.data || null) as any;
+    const ocError = ocResult?.error;
 
     if (ocError || !oc) {
       console.error('OC não encontrada:', ocError);
@@ -78,19 +81,21 @@ Voima Engenharia
 
     // Registrar envio no banco
     try {
-      const { error: registroError } = await supabase
+      const mensagemObj = {
+        oc_id: oc_id,
+        telefone: telefone,
+        nome_contato: nome_cliente,
+        mensagem: mensagem.trim(),
+        tipo: 'saida',
+        message_id: resultado.messageId,
+        status_entrega: 'enviada',
+        empresa_id: empresa_id,
+        timestamp: new Date(),
+      } as any;
+
+      const { error: registroError } = await (supabase as any)
         .from('whatsapp_mensagens')
-        .insert({
-          oc_id: oc_id,
-          telefone: telefone,
-          nome_contato: nome_cliente,
-          mensagem: mensagem.trim(),
-          tipo: 'saida',
-          message_id: resultado.messageId,
-          status_entrega: 'enviada',
-          empresa_id: empresa_id,
-          timestamp: new Date(),
-        });
+        .insert(mensagemObj);
 
       if (registroError) {
         console.warn('Erro ao registrar envio:', registroError);

@@ -33,11 +33,14 @@ export async function POST(request: NextRequest) {
       // ========================================
       // ETAPA 1: Identificar empresa pelo número Z-API
       // ========================================
-      const { data: empresa, error: empresaError } = await supabase
+      const empresaResult = await (supabase as any)
         .from('empresas')
         .select('id, razao_social, nome_fantasia')
         .eq('numero_whatsapp_zapi', numeroZapi)
         .single();
+
+      const empresa = (empresaResult?.data || null) as any;
+      const empresaError = empresaResult?.error;
 
       if (empresaError || !empresa) {
         console.warn(`⚠️ Nenhuma empresa encontrada para número: ${numeroZapi}`);
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
       // ========================================
       // ETAPA 3: Salvar mensagem no histórico
       // ========================================
-      const { error: saveError } = await supabase
+      const { error: saveError } = await (supabase as any)
         .from('whatsapp_mensagens')
         .insert({
           empresa_id: empresa.id,
@@ -180,7 +183,7 @@ export async function POST(request: NextRequest) {
       console.log(`🟢 WhatsApp conectado: ${numeroWhatsapp}`);
 
       // Salvar status
-      await supabase.from('zapi_instance_status').upsert({
+      await (supabase as any).from('zapi_instance_status').upsert({
         instance_id: process.env.Z_API_INSTANCE_ID,
         status: 'connected',
         numero_whatsapp: numeroWhatsapp,
@@ -200,7 +203,7 @@ export async function POST(request: NextRequest) {
     if (event === 'INSTANCE_DISCONNECTED' || event === 'disconnected') {
       console.log('🔴 WhatsApp desconectado');
 
-      await supabase.from('zapi_instance_status').upsert({
+      await (supabase as any).from('zapi_instance_status').upsert({
         instance_id: process.env.Z_API_INSTANCE_ID,
         status: 'disconnected',
         last_update: new Date(),

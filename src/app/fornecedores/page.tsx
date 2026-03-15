@@ -34,7 +34,7 @@ export default function FornecedoresPage() {
 
     const cats = form.categorias.split(',').map(c => c.trim().toLowerCase()).filter(Boolean);
 
-    const { error } = await supabase.from('fornecedores').insert({
+    const fornecedorData = {
       razao_social: form.razao_social,
       nome_fantasia: form.nome_fantasia || null,
       cnpj: form.cnpj || null,
@@ -46,7 +46,9 @@ export default function FornecedoresPage() {
       email: form.email || null,
       categorias: cats,
       status: 'ativo',
-    });
+    } as any;
+
+    const { error } = await (supabase as any).from('fornecedores').insert(fornecedorData);
 
     if (error) alert('Erro: ' + error.message);
     else {

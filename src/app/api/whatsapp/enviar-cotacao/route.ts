@@ -21,11 +21,14 @@ export async function POST(request: NextRequest) {
     console.log(`💰 Preparando envio de cotação ${cotacao_id} para ${telefone}`);
 
     // Buscar dados da cotação
-    const { data: cotacao, error: cotacaoError } = await supabase
+    const cotacaoResult = await (supabase as any)
       .from('cotacoes')
       .select('*')
       .eq('id', cotacao_id)
       .single();
+
+    const cotacao = (cotacaoResult?.data || null) as any;
+    const cotacaoError = cotacaoResult?.error;
 
     if (cotacaoError || !cotacao) {
       console.error('Cotação não encontrada:', cotacaoError);
@@ -36,11 +39,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar opcoes da cotação
-    const { data: opcoes, error: opcoesError } = await supabase
+    const opcoesResult = await (supabase as any)
       .from('cotacao_opcoes')
       .select('*')
       .eq('cotacao_id', cotacao_id)
       .order('ordem', { ascending: true });
+
+    const opcoes = (opcoesResult?.data || []) as any[];
+    const opcoesError = opcoesResult?.error;
 
     if (opcoesError) {
       console.error('Erro ao buscar opções:', opcoesError);
@@ -91,7 +97,7 @@ Voima Engenharia
 
     // Registrar envio no banco
     try {
-      const { error: registroError } = await supabase
+      const { error: registroError } = await (supabase as any)
         .from('whatsapp_mensagens')
         .insert({
           cotacao_id: cotacao_id,
