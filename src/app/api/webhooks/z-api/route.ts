@@ -27,6 +27,11 @@ const addLog = (event: string, data: any, status: string) => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // 📊 LOG TUDO QUE CHEGA
+    console.log('🔔 [WEBHOOK RAW] Requisição recebida:', JSON.stringify(body, null, 2));
+    addLog('RAW_REQUEST', body, 'RECEBIDA');
+
     const { event, data } = body;
 
     console.log('🔔 Webhook Z-API recebido:', event, JSON.stringify(data));
@@ -263,4 +268,32 @@ export async function GET() {
     },
     { status: 200 }
   );
+}
+
+/**
+ * Capturar qualquer outro método HTTP (OPTIONS, HEAD, PATCH, DELETE, etc)
+ */
+export async function PATCH(request: NextRequest) {
+  console.log('⚠️ [WEBHOOK] PATCH recebido');
+  addLog('PATCH', await request.json().catch(() => ({})), 'RECEBIDA');
+  return NextResponse.json({ success: true }, { status: 200 });
+}
+
+export async function PUT(request: NextRequest) {
+  console.log('⚠️ [WEBHOOK] PUT recebido');
+  addLog('PUT', await request.json().catch(() => ({})), 'RECEBIDA');
+  return NextResponse.json({ success: true }, { status: 200 });
+}
+
+export async function OPTIONS() {
+  console.log('⚠️ [WEBHOOK] OPTIONS recebido (CORS preflight)');
+  addLog('OPTIONS', {}, 'RECEBIDA');
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+    },
+  });
 }
