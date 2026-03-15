@@ -1,26 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": {
-      "description": "URL do seu projeto Supabase"
-    },
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
-      "description": "Chave anon do Supabase"
-    },
-    "Z_API_INSTANCE_ID": {
-      "description": "ID da instância Z-API",
-      "value": "3EAADDCE71F5D2C80DAAB2694663CF7D"
-    },
-    "Z_API_TOKEN": {
-      "description": "Token de autenticação Z-API"
-    },
-    "Z_API_ENDPOINT": {
-      "description": "Endpoint da Z-API",
-      "value": "https://api.z-api.io"
-    },
-    "ANTHROPIC_API_KEY": {
-      "description": "Chave da API Anthropic Claude"
-    }
-  }
+  "framework": "nextjs"
 }
