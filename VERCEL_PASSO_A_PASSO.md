@@ -3,14 +3,14 @@
 ## ✅ Tenha isso pronto:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL = https://bhgwizuonupjceckxjba.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZ3dpenVvbnVwamNlY2t4amJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNzE3MjQsImV4cCI6MjA4ODg0NzcyNH0.BEHORjz-ZEUW11T8a-ZVPJFszzKWgMaLSFAMBXDgCSk
+NEXT_PUBLIC_SUPABASE_URL = (copie do Supabase Settings → API)
+NEXT_PUBLIC_SUPABASE_ANON_KEY = (copie do Supabase Settings → API)
 
 Z_API_INSTANCE_ID = 3EAADDCE71F5D2C80DAAB2694663CF7D
-Z_API_TOKEN = 44BAD21EEC9A41B0141E1142
+Z_API_TOKEN = (seu token Z-API)
 Z_API_ENDPOINT = https://api.z-api.io
 
-ANTHROPIC_API_KEY = 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
+ANTHROPIC_API_KEY = (gere em https://console.anthropic.com/)
 ```
 
 ---
@@ -39,21 +39,14 @@ ANTHROPIC_API_KEY = sk-ant-api03-Ljg6owWCth1hqaQHQdPk994oNt4rmD_BDKmmT7wVGMJJ4U3
 
 ### **7. Adicione EXATAMENTE essas variáveis:**
 
-#### Coluna 1: Nome | Coluna 2: Valor
-
-```
-NEXT_PUBLIC_SUPABASE_URL | https://bhgwizuonupjceckxjba.supabase.co
-
-NEXT_PUBLIC_SUPABASE_ANON_KEY | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZ3dpenVvbnVwamNlY2t4amJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNzE3MjQsImV4cCI6MjA4ODg0NzcyNH0.BEHORjz-ZEUW11T8a-ZVPJFszzKWgMaLSFAMBXDgCSk
-
-Z_API_INSTANCE_ID | 3EAADDCE71F5D2C80DAAB2694663CF7D
-
-Z_API_TOKEN | 44BAD21EEC9A41B0141E1142
-
-Z_API_ENDPOINT | https://api.z-api.io
-
-ANTHROPIC_API_KEY | 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
-```
+| Nome | Valor |
+|------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://bhgwizuonupjceckxjba.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGc...` (seu token) |
+| `Z_API_INSTANCE_ID` | `3EAADDCE71F5D2C80DAAB2694663CF7D` |
+| `Z_API_TOKEN` | `44BAD21E...` (seu token) |
+| `Z_API_ENDPOINT` | `https://api.z-api.io` |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` (seu token) |
 
 ### **8. Após adicionar cada uma, clique o botão "Save"**
 
